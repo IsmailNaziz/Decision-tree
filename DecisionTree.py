@@ -65,12 +65,10 @@ class DecisonTree(object):
 		min_value = ginies_val.index(min(ginies_val)) 
 
 		for key, val in dic_func.items():  
-			if val == min_value:
-				min_key = key
+    		if val == min_value:
+        		min_key = key
 
-		return dic_func[min_key]
-
-
+        return dic_func[min_key]
 	def gini_binary(self,col,var):
 		df_0 = self.df_train[self.df_train['output'] == 0]
 		x_0 = df_0[col].sum() # number of ones
@@ -89,7 +87,7 @@ class DecisonTree(object):
 
 
 	def gini_node(self,col):
-		if col_type[col] == 'b':
+		if col_type[col] = 'b':
 			return gini_binary(self,col,var)
 		else:
 			df_list = []
