@@ -13,11 +13,19 @@ class DecisonTree(object):
 	"""docstring for DecisonTree"""
 
 	def __init__(self,df,function,proportion = 0.3):
-		self.df_train = df.head(int((1-proportion)*df.shape[0]))
-		self.df_test = df.head(int(proportion*df.shape[0]))
+		df_train = df.head(int((1-proportion)*df.shape[0]))
+		df_test = df.head(int(proportion*df.shape[0]))
 		self.function = self._init_function(function)
 		self.col_type = self._init_col_type(df)
-		self.tree = {}
+		self.meta_graph = {} # key : parent , value : child classic graph
+		self.mapping_meta_graph = {} # key : key metagraph, value :  ('col', None if binary treshhold if continuous)
+
+
+	def create_tree(self,df):
+
+		res = self.select_col(df)
+		self.mapping_meta_graph[i] = res
+		self.meta_graph[i] = (i+1,i+2)
 
 
 	def _init_function(self,function):
@@ -44,37 +52,36 @@ class DecisonTree(object):
 
 	def _init_col_type(self):
 		dic = {}
-		for col in self.df.columns:
-			if self.df[col].iloc[0] in [0,1]:
+		for col in df.columns:
+			if df[col].iloc[0] in [0,1]:
 				dic[col]= 'b'
 			else:
 				dic[col]= 'c'
 		return dic
 
-	def select_col(self):
-		'''
-		x are used to represents ones in a subset 
-		y are used to represents zeros in a subset 
-		'''
-		columns = list(self.df.column)
+	def select_col(df):
+	
+		columns = list(df.columns)
 		dic_func = {}
 		for col in columns[:len(columns)-1]:
-			dic_func[col] = gini_node(self,col) # returns a tuple 
+			dic_func[col] = self.func_node(col) # returns a tuple (val_fun,treshhold or None for binary )
 
-		ginies_val = [dic_func[key] for key in dic_func.keys()]
-		min_value = ginies_val.index(min(ginies_val)) 
+		fun_vals = [dic_func[key] for key in dic_func.keys()]
+		min_value = fun_vals.index(min(fun_vals)) 
 
 		for key, val in dic_func.items():  
-    		if val == min_value:
-        		min_key = key
+			if val == min_value:
+				key_min = key
 
-        return dic_func[min_key]
-	def gini_binary(self,col,var):
-		df_0 = self.df_train[self.df_train['output'] == 0]
+		return dic_func[key_min]
+
+ 
+	def func_binary(df,col,var = None):
+		df_0 = df[df['output'] == 0]
 		x_0 = df_0[col].sum() # number of ones
 		y_0 = df_0.shape[0] - df_1[col].sum() #number of zeros
 
-		df_1 = self.df_train[self.df_train['output'] == 1]
+		df_1 = df[df['output'] == 1]
 		x_1 = df_1[col].sum() # number of ones
 		y_1 = df_1.shape[0] - df_1[col].sum() #number of zeros
 	
@@ -83,29 +90,38 @@ class DecisonTree(object):
 		p_x_1 = x_1/df_1.shape[1] 
 		p_y_1 = y_1/df_1.shape[1] 
 
-		return((df_0.shape[0]/df_train.shape[0])*self.function(p_x_0,p_y_0) + (df_1.shape[0]/df_train.shape[0])*self.function(p_x_1,p_y_1),var)
+		return((df_0.shape[0]/df.shape[0])*self.function(p_x_0,p_y_0) + (df_1.shape[0]/df.shape[0])*self.function(p_x_1,p_y_1),var,col)
 
 
-	def gini_node(self,col):
-		if col_type[col] = 'b':
-			return gini_binary(self,col,var)
+	def func_node(df,col):
+
+			'''
+			x are used to represents ones in a subset 
+			y are used to represents zeros in a subset 
+			'''
+
+		if self.col_type[col] == 'b':
+			return self.func_binary(col,var)
 		else:
 			df_list = []
-			gini_list = [] 
-			self.df_train = df.sort_values(by=[col])
-			average_list = [(df_train[col].iloc[i]+df_train[col].iloc[i+1])/2 for i in range(df_train.shape[0]-2)]
+			val_func_list = [] 
+			df = df.sort_values(by=[col])
+
+			# Tranformation to be compatible with the func_binary
+			average_list = [(df[col].iloc[i]+df[col].iloc[i+1])/2 for i in range(df.shape[0]-1)]
 			for avg in average_list:
-				df_list.append(self.df_train.apply(lambda x : 0 if x <= avg else 1))
-			for i in range(df_list):
-				 gini_list.append(gini_binary(self,col,average_list[i]))
-			
-			ginies_val = [gini_list[i][0] for i in range(len(gini_list))]
-			min_index = ginies_val.index(min(ginies_val))
-			return gini_list[min_index]
+				df_list.append(df[col].apply(lambda x : 0 if x <= avg else 1))
+			for i in range(len(df_list)):
+				 val_func_list.append(self.func_binary(df,col,average_list[i]))
+					
+			# selection of the average that minimizes loss function
+			fun_vals = [val_func_list[i][0] for i in range(len(val_func_list))]
+			min_index = fun_vals.index(min(fun_vals))
+
+			return val_func_list[min_index]
 
 
 if __name__ == '__main__':
-	df = pd.read_csv('D:\machine_learning\generated_data\data_4.csv',index_col=False)
+	df = pd.read_csv('D:\machine_learning\generated_data\data_5_IM_OB.csv',index_col=False)
 	df.drop(df.columns[0], axis=1, inplace=True)
-	df['output'] = df['output'].apply(lambda x : 0 if x < 0.5 else 1)	
 	print(df)
