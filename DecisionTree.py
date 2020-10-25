@@ -6,8 +6,8 @@
 
 import pandas as pd
 import numpy as np
+import * from Node 
 import copy
-
 
 class DecisonTree(object):
 	"""docstring for DecisonTree"""
@@ -19,13 +19,6 @@ class DecisonTree(object):
 		self.col_type = self._init_col_type(df)
 		self.meta_graph = {} # key : parent , value : child classic graph
 		self.mapping_meta_graph = {} # key : key metagraph, value :  ('col', None if binary treshhold if continuous)
-
-
-	def create_tree(self,df):
-
-		res = self.select_col(df)
-		self.mapping_meta_graph[i] = res
-		self.meta_graph[i] = (i+1,i+2)
 
 
 	def _init_function(self,function):
@@ -59,24 +52,62 @@ class DecisonTree(object):
 				dic[col]= 'c'
 		return dic
 
-	def select_col(df):
+	def generate_df(df,node):
+		node_tool = node.copy()
+		df_tool = df.copy()
+		depth = 0
+		path = []
+		while node_tool.prev != None:
+			depth+=1
+			path = node_tool.success
+			node_tool = node_tool.prev
+
+
+		for i in range(depth-1):
+			res = (1 if path[i] ==True else 0)
+			df_tool = node_tool.browse_tree(df_tool)[res]
+			node_tool = node_tool.next
+
+		return df
+
+	def step(node):
+		# return the vale for the next node
+		df = generate_df(node) # generate df for that step
+		min_node = select_node(df)
+		if min_node.func_val < node.fun_val:
+			return min_node 
+		return None
+
+	def create_tree(node):
+		pass
+		
+
+	def select_node(df):
 	
 		columns = list(df.columns)
 		dic_func = {}
 		for col in columns[:len(columns)-1]:
-			dic_func[col] = self.func_node(col) # returns a tuple (val_fun,treshhold or None for binary )
+			L_features = self.func_node(col) # returns a tuple (val_fun,treshhold or None for binary )
 
-		fun_vals = [dic_func[key] for key in dic_func.keys()]
-		min_value = fun_vals.index(min(fun_vals)) 
+		return self.min_node_list(L_features)
 
-		for key, val in dic_func.items():  
-			if val == min_value:
-				key_min = key
+ 	
+	def min_node_list(L_nodes):
+		'''
+		return minimum of fun_val in list of node 
+		'''
+		mini = L_nodes[0].func_val
+		index = 0
+		for i in range(len(L_nodes)):
+			if L_nodes[i].func_val < mini:
+				mini = L_nodes[i].func_val
+				index = i
 
-		return dic_func[key_min]
+		return L_nodes[i]
 
- 
-	def func_binary(df,col,var = None):
+
+
+	def func_binary(df,col,treshhold = 0.5):
 		df_0 = df[df['output'] == 0]
 		x_0 = df_0[col].sum() # number of ones
 		y_0 = df_0.shape[0] - df_1[col].sum() #number of zeros
@@ -90,7 +121,9 @@ class DecisonTree(object):
 		p_x_1 = x_1/df_1.shape[1] 
 		p_y_1 = y_1/df_1.shape[1] 
 
-		return((df_0.shape[0]/df.shape[0])*self.function(p_x_0,p_y_0) + (df_1.shape[0]/df.shape[0])*self.function(p_x_1,p_y_1),var,col)
+		func_val = (df_0.shape[0]/df.shape[0])*self.function(p_x_0,p_y_0) + (df_1.shape[0]/df.shape[0])*self.function(p_x_1,p_y_1)
+
+		return Node(col,func_val,treshhold)
 
 
 	def func_node(df,col):
@@ -101,7 +134,7 @@ class DecisonTree(object):
 			'''
 
 		if self.col_type[col] == 'b':
-			return self.func_binary(col,var)
+			return self.func_binary(col,treshhold)
 		else:
 			df_list = []
 			val_func_list = [] 
@@ -111,14 +144,12 @@ class DecisonTree(object):
 			average_list = [(df[col].iloc[i]+df[col].iloc[i+1])/2 for i in range(df.shape[0]-1)]
 			for avg in average_list:
 				df_list.append(df[col].apply(lambda x : 0 if x <= avg else 1))
-			for i in range(len(df_list)):
-				 val_func_list.append(self.func_binary(df,col,average_list[i]))
-					
-			# selection of the average that minimizes loss function
-			fun_vals = [val_func_list[i][0] for i in range(len(val_func_list))]
-			min_index = fun_vals.index(min(fun_vals))
 
-			return val_func_list[min_index]
+			#apply fun_binary
+			for i in range(len(df_list)):
+				 val_func_list.append(self.func_binary(df_list[i],col,average_list[i]))
+			
+			return self.min_node_list(val_func_list)
 
 
 if __name__ == '__main__':
