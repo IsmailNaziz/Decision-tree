@@ -6,7 +6,7 @@
 
 import pandas as pd
 import numpy as np
-import * from Node 
+from Node import Node
 import copy
 
 class DecisonTree(object):
@@ -17,8 +17,14 @@ class DecisonTree(object):
 		df_test = df.head(int(proportion*df.shape[0]))
 		self.function = self._init_function(function)
 		self.col_type = self._init_col_type(df)
+		self.first_node = self._init_first_node(self.df_train) # init
 		self.meta_graph = {} # key : parent , value : child classic graph
 		self.mapping_meta_graph = {} # key : key metagraph, value :  ('col', None if binary treshhold if continuous)
+
+
+	def _init_first_node(self):
+		node = select_node(self.df_train)
+		
 
 
 	def _init_function(self,function):
@@ -62,24 +68,37 @@ class DecisonTree(object):
 			path = node_tool.success
 			node_tool = node_tool.prev
 
+		if depth == 0:
+			return df 
 
 		for i in range(depth-1):
-			res = (1 if path[i] ==True else 0)
-			df_tool = node_tool.browse_tree(df_tool)[res]
-			node_tool = node_tool.next
+			if node_tool.next_succ != None:
+				res = (1 if path[i] ==True else 0)
+				res_browse = (node_tool.next_succ if path[i] ==True else node_tool.next_fail)
+				df_tool = node_tool.split_node(df_tool)[res]
+				node_tool = res_browse
+			else: 
+				df_tool = node_tool.split_node(df_tool)[res]
 
-		return df
+		return df_tool
 
-	def step(node):
+	def step(df,node):
 		# return the vale for the next node
-		df = generate_df(node) # generate df for that step
+		df = generate_df(df,node) # generate df for that step
 		min_node = select_node(df)
 		if min_node.func_val < node.fun_val:
+			node.next = min_node 
 			return min_node 
-		return None
 
-	def create_tree(node):
-		pass
+		return False
+
+	def create_tree(self):
+		res_step = step(self.df_train,self.first_node)
+
+		if step(node) != false:
+
+
+		return None 
 		
 
 	def select_node(df):
@@ -87,14 +106,14 @@ class DecisonTree(object):
 		columns = list(df.columns)
 		dic_func = {}
 		for col in columns[:len(columns)-1]:
-			L_features = self.func_node(col) # returns a tuple (val_fun,treshhold or None for binary )
+			L_features = self.func_node(col) # returns a Node 
 
 		return self.min_node_list(L_features)
 
  	
 	def min_node_list(L_nodes):
 		'''
-		return minimum of fun_val in list of node 
+		return node with minimum of fun_val in list of nodes
 		'''
 		mini = L_nodes[0].func_val
 		index = 0
@@ -128,10 +147,10 @@ class DecisonTree(object):
 
 	def func_node(df,col):
 
-			'''
-			x are used to represents ones in a subset 
-			y are used to represents zeros in a subset 
-			'''
+		'''
+		x are used to represents ones in a subset 
+		y are used to represents zeros in a subset 
+		'''
 
 		if self.col_type[col] == 'b':
 			return self.func_binary(col,treshhold)
